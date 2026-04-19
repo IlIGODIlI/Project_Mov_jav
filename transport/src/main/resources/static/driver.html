@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Console | SmartTrack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 250px; border-radius: 1rem; margin-top: 1rem; border: 1px solid #334155; }
+        .pulse-animation { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+<header class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-md sticky top-0 z-[1000]">
+    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+        <span class="text-indigo-500">🚌</span> Driver Console
+    </h1>
+    <button onclick="logout()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg transition">Logout</button>
+</header>
+
+<main class="flex-1 p-4 flex flex-col items-center space-y-6">
+    <div id="status-circle" class="w-32 h-32 rounded-full border-4 border-slate-800 flex flex-col items-center justify-center bg-slate-900 shadow-2xl transition-all duration-500">
+        <span id="status-icon" class="text-2xl mb-1">📡</span>
+        <span id="status-text" class="text-[10px] uppercase font-bold tracking-widest text-slate-500">Offline</span>
+    </div>
+
+    <div class="w-full max-w-sm">
+        <div class="space-y-2 mb-4">
+            <input id="routeInput" type="text" placeholder="ENTER ROUTE CODE"
+                   class="w-full bg-slate-900 border border-slate-800 p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-center font-mono text-xl uppercase tracking-widest text-white shadow-inner">
+            <button onclick="toggleTrip()" id="trip-btn"
+                    class="w-full bg-indigo-600 hover:bg-indigo-500 py-4 rounded-xl font-bold text-lg shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+                Start Trip
+            </button>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <div class="w-full max-w-sm bg-slate-900/50 border border-slate-800 p-4 rounded-xl">
+        <p class="text-[10px] uppercase font-bold text-slate-500 mb-2 tracking-widest">Telemetry Feed</p>
+        <div id="console-log" class="font-mono text-[10px] text-slate-400 space-y-1 h-12 overflow-hidden italic">
+            Waiting for trip initiation...
+        </div>
+    </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    let isTracking = false;
+    let pollTimer = null;
+    let map, marker;
+    const token = localStorage.getItem("token");
+
+    function initMap() {
+        map = L.map('map').setView([28.6139, 77.2090], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+        marker = L.marker([28.6139, 77.2090]).addTo(map);
+    }
+
+    function toggleTrip() {
+        const routeCode = document.getElementById("routeInput").value.trim().toUpperCase();
+        if (!routeCode) return alert("Please enter a route code.");
+
+        const btn = document.getElementById("trip-btn");
+        const statusCircle = document.getElementById("status-circle");
+
+        if (!isTracking) {
+            isTracking = true;
+            btn.innerText = "End Trip";
+            btn.classList.replace("bg-indigo-600", "bg-red-600");
+            statusCircle.classList.replace("border-slate-800", "border-green-500");
+            statusCircle.classList.add("pulse-animation");
+            document.getElementById("status-text").innerText = "Transmitting";
+
+            startTrackingLoop(routeCode);
+        } else {
+            isTracking = false;
+            clearTimeout(pollTimer);
+            location.reload();
+        }
+    }
+
+    function startTrackingLoop(routeCode) {
+        if (!isTracking) return;
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const { latitude, longitude } = pos.coords;
+
+                // Update Map
+                const latlng = [latitude, longitude];
+                if (!map) initMap();
+                map.setView(latlng, 15);
+                marker.setLatLng(latlng);
+
+                // Send to Server
+                sendUpdate(latitude, longitude, routeCode);
+
+                // Recursive timeout prevents "freezing" common with watchPosition
+                pollTimer = setTimeout(() => startTrackingLoop(routeCode), 10000);
+            },
+            (err) => {
+                updateLog("GPS Error: " + err.message);
+                pollTimer = setTimeout(() => startTrackingLoop(routeCode), 5000);
+            },
+            { enableHighAccuracy: true }
+        );
+    }
+
+    async function sendUpdate(lat, lng, routeCode) {
+        try {
+            const res = await fetch("/driver/updateLocation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+                body: JSON.stringify({ routeCode, latitude: lat, longitude: lng })
+            });
+            if (res.ok) updateLog(`Sent: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        } catch (err) {
+            updateLog("Sync failed. Retrying...");
+        }
+    }
+
+    function updateLog(msg) {
+        const log = document.getElementById("console-log");
+        log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>` + log.innerHTML;
+    }
+
+    function logout() { localStorage.clear(); window.location.href = "/login.html"; }
+    window.onload = initMap;
+</script>
+</body>
+</html>

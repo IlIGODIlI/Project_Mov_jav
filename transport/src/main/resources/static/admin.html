@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel | SmartTrack System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 flex min-h-screen font-sans">
+
+<aside class="w-64 bg-slate-900 text-white p-6 hidden lg:block shadow-2xl">
+    <div class="flex items-center gap-3 mb-10">
+        <div class="bg-indigo-500 p-2 rounded-lg text-xl">🛠️</div>
+        <h1 class="text-xl font-bold tracking-tight">AdminCenter</h1>
+    </div>
+    <nav class="space-y-2">
+        <a href="#" class="block p-3 bg-indigo-600 rounded-xl font-semibold shadow-lg shadow-indigo-500/20">Dashboard</a>
+        <a href="#database-view" class="block p-3 hover:bg-slate-800 rounded-xl transition text-slate-400 hover:text-white">Live Logs</a>
+        <hr class="border-slate-800 my-4">
+        <button onclick="logout()" class="w-full text-left p-3 text-red-400 hover:bg-red-500/10 rounded-xl transition">Logout</button>
+    </nav>
+</aside>
+
+<main class="flex-1 p-6 lg:p-10 max-w-7xl mx-auto w-full">
+    <header class="flex justify-between items-center mb-10">
+        <div>
+            <h2 class="text-3xl font-bold text-slate-800 tracking-tight">System Control</h2>
+            <p class="text-slate-500">Manage routes, users, and live transport data.</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="flex h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-sm font-medium text-slate-600 uppercase tracking-widest">Server: Online</span>
+        </div>
+    </header>
+
+    <div class="grid lg:grid-cols-2 gap-8 mb-10">
+        <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 hover:shadow-md transition">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="text-2xl">📍</span>
+                <h3 class="text-xl font-bold text-slate-800">Route Management</h3>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">New Route Name</label>
+                    <input id="routeName" type="text" placeholder="e.g. KV No.1 Delhi Cantt Route"
+                           class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+                <button onclick="createRoute()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all active:scale-95">
+                    Generate Route Code
+                </button>
+                <div id="route-result" class="hidden p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-center font-mono text-emerald-700 text-sm italic"></div>
+            </div>
+        </div>
+
+        <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 hover:shadow-md transition">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="text-2xl">👥</span>
+                <h3 class="text-xl font-bold text-slate-800">User Provisioning</h3>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <input id="regEmail" type="email" placeholder="Email Address" class="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                <input id="regPass" type="password" placeholder="Password" class="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+            </div>
+            <select id="regRole" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm mb-4">
+                <option value="STUDENT">Assign as Student</option>
+                <option value="DRIVER">Assign as Driver</option>
+                <option value="ADMIN">Assign as Admin</option>
+            </select>
+            <button onclick="registerUser()" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-700 transition active:scale-95">
+                Register Account
+            </button>
+        </div>
+    </div>
+
+    <section id="database-view" class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h3 class="text-xl font-bold text-slate-800">Live Database Logs</h3>
+                <p class="text-sm text-slate-500">Real-time records from your Spring Boot repositories.</p>
+            </div>
+            <button onclick="refreshData()" class="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-5 py-2 rounded-xl font-bold transition">
+                <span id="sync-icon" class="transition-transform duration-500">🔄</span> Sync Tables
+            </button>
+        </div>
+
+        <div class="grid xl:grid-cols-2 gap-12">
+            <div class="space-y-4">
+                <h4 class="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                    <span class="w-2 h-2 bg-indigo-400 rounded-full"></span> Active Routes
+                </h4>
+                <div class="overflow-hidden border border-slate-100 rounded-2xl">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase font-bold">
+                        <tr>
+                            <th class="px-6 py-4">Name</th>
+                            <th class="px-6 py-4">Code</th>
+                        </tr>
+                        </thead>
+                        <tbody id="route-table-body" class="divide-y divide-slate-100 text-sm text-slate-700 font-medium">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                    <span class="w-2 h-2 bg-emerald-400 rounded-full"></span> System Users
+                </h4>
+                <div class="overflow-hidden border border-slate-100 rounded-2xl">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase font-bold">
+                        <tr>
+                            <th class="px-6 py-4">Email</th>
+                            <th class="px-6 py-4">Role</th>
+                        </tr>
+                        </thead>
+                        <tbody id="user-table-body" class="divide-y divide-slate-100 text-sm text-slate-700 font-medium">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    const token = localStorage.getItem("token");
+
+    if (!token) window.location.href = "/login.html";
+
+    async function createRoute() {
+        const nameInput = document.getElementById("routeName");
+        const name = nameInput.value;
+        const resDisplay = document.getElementById("route-result");
+
+        try {
+            const res = await fetch("/admin/createRoute", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ name: name })
+            });
+            const data = await res.json();
+
+            resDisplay.innerText = `Success: ${data.routeCode} generated for ${name || 'Unnamed Route'}`;
+            resDisplay.classList.remove("hidden");
+            nameInput.value = "";
+            refreshData();
+        } catch (err) {
+            alert("Error connecting to RouteController.");
+        }
+    }
+
+    async function registerUser() {
+        const email = document.getElementById("regEmail").value;
+        const password = document.getElementById("regPass").value;
+        const role = document.getElementById("regRole").value;
+
+        try {
+            const res = await fetch("/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password, role })
+            });
+
+            if (res.ok) {
+                alert("Registration successful!");
+                document.getElementById("regEmail").value = "";
+                document.getElementById("regPass").value = "";
+                refreshData();
+            }
+        } catch (err) {
+            alert("Registration failed.");
+        }
+    }
+
+    async function refreshData() {
+        const syncIcon = document.getElementById("sync-icon");
+        syncIcon.classList.add("rotate-180"); // Visual feedback
+
+        try {
+            // Fetch Routes
+            const routeRes = await fetch("/admin/allRoutes", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            const routes = await routeRes.json();
+            document.getElementById("route-table-body").innerHTML = routes.map(r => `
+                <tr class="border-b border-slate-50">
+                    <td class="px-6 py-4 font-bold text-slate-800">${r.name || 'Route '+r.routeCode}</td>
+                    <td class="px-6 py-4 font-mono text-indigo-600">${r.routeCode}</td>
+                </tr>
+            `).join('');
+
+            // Fetch Users
+            const userRes = await fetch("/admin/allUsers", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            const users = await userRes.json();
+            document.getElementById("user-table-body").innerHTML = users.map(u => `
+                <tr class="border-b border-slate-50 text-xs">
+                    <td class="px-6 py-3 font-medium">${u.email || 'N/A'}</td>
+                    <td class="px-6 py-3"><span class="bg-slate-100 text-slate-600 px-2 py-1 rounded font-bold uppercase text-[10px]">${u.role}</span></td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            console.error("Sync failed:", err);
+        } finally {
+            setTimeout(() => syncIcon.classList.remove("rotate-180"), 500);
+        }
+    }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+    }
+
+    window.onload = refreshData;
+</script>
+</body>
+</html>

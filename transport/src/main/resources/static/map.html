@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartTrack | Student Live</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <style>
+        #map { height: 500px; border-radius: 1.5rem; z-index: 1; }
+        .student-dot { background: #3b82f6; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 12px rgba(59, 130, 246, 0.8); }
+        /* Hide the text instructions box from the map */
+        .leaflet-routing-container { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans">
+
+<nav class="bg-indigo-700 text-white p-4 shadow-xl flex justify-between items-center px-8 sticky top-0 z-50">
+    <div class="flex items-center gap-2">
+        <span class="text-2xl">🚌</span>
+        <h1 class="text-xl font-bold tracking-tight">SmartTrack</h1>
+    </div>
+    <button onclick="logout()" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm transition">Logout</button>
+</nav>
+
+<main class="max-w-6xl mx-auto p-4 lg:p-8 space-y-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-indigo-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Route</p>
+            <p id="display-route" class="text-lg font-black text-slate-800">---</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-emerald-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Arrival</p>
+            <p id="display-eta" class="text-lg font-black text-slate-800">Calculating...</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-amber-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Driver</p>
+            <p id="display-driver" class="text-xs font-bold text-slate-600 truncate">Loading...</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-blue-500 text-center">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Passengers</p>
+            <p id="display-count" class="text-xl font-black text-blue-600">0</p>
+        </div>
+    </div>
+
+    <div class="bg-white p-2 rounded-3xl shadow-2xl border border-slate-100 relative">
+        <div id="map"></div>
+    </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+<script>
+    const token = localStorage.getItem("token");
+    const schoolCoords = [28.6139, 77.2090];
+    let map, busMarker, studentMarker, routingControl;
+
+    async function startApp() {
+        if (!token) window.location.href = "/login.html";
+
+        const res = await fetch("/student/myRoute", { headers: { "Authorization": "Bearer "+token } });
+        const data = await res.json();
+        if(!data) return;
+
+        document.getElementById("display-route").innerText = data.routeCode;
+
+        setInterval(() => updateLiveStats(data.routeCode), 5000);
+        updateLiveStats(data.routeCode);
+    }
+
+    async function updateLiveStats(routeCode) {
+        try {
+            const [loc, eta, details] = await Promise.all([
+                fetch(`/student/busLocation/${routeCode}`, { headers: { "Authorization": "Bearer "+token } }).then(r => r.json()),
+                fetch(`/student/eta/${routeCode}`, { headers: { "Authorization": "Bearer "+token } }).then(r => r.text()),
+                fetch(`/student/routeDetails/${routeCode}`, { headers: { "Authorization": "Bearer "+token } }).then(r => r.json())
+            ]);
+
+            document.getElementById("display-eta").innerText = Math.round(eta) + " mins";
+            document.getElementById("display-driver").innerText = details.driverEmail || "Not Assigned";
+            document.getElementById("display-count").innerText = details.studentCount;
+
+            const busPos = [loc.latitude, loc.longitude];
+
+            if (!map) {
+                initMap(loc.latitude, loc.longitude);
+            } else {
+                busMarker.setLatLng(busPos);
+                // Dynamically update road path
+                drawRoadPath(busPos);
+            }
+        } catch (e) { console.error("Sync error"); }
+    }
+
+    function initMap(lat, lng) {
+        map = L.map('map', { zoomControl: false }).setView([lat, lng], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+
+        navigator.geolocation.watchPosition(p => {
+            const sPos = [p.coords.latitude, p.coords.longitude];
+            if (!studentMarker) {
+                studentMarker = L.circleMarker(sPos, { radius: 7, fillColor: '#3b82f6', color: '#fff', weight: 3, fillOpacity: 1 }).addTo(map).bindPopup("You");
+            } else {
+                studentMarker.setLatLng(sPos);
+            }
+        });
+
+        busMarker = L.marker([lat, lng]).addTo(map).bindPopup("Your Bus");
+        L.marker(schoolCoords, { icon: L.divIcon({ className: 'bg-red-500 w-4 h-4 rounded-full border-2 border-white' }) }).addTo(map).bindPopup("School");
+
+        drawRoadPath([lat, lng]);
+    }
+
+    // New Function for Road-Aligned Routing
+    function drawRoadPath(busPos) {
+        if (routingControl) {
+            map.removeControl(routingControl);
+        }
+
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(busPos[0], busPos[1]),
+                L.latLng(schoolCoords[0], schoolCoords[1])
+            ],
+            lineOptions: {
+                styles: [{ color: '#6366f1', weight: 6, opacity: 0.8 }]
+            },
+            createMarker: function() { return null; }, // Hide default routing markers
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: false,
+            show: false
+        }).addTo(map);
+    }
+
+    function logout() { localStorage.clear(); window.location.href = "/login.html"; }
+    startApp();
+</script>
+</body>
+</html>
