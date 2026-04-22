@@ -22,8 +22,9 @@ public class SecurityConfig {
                         // Allow authentication and registration
                         .requestMatchers("/login", "/register").permitAll()
 
-                        // Allow all frontend static HTML files so they can load in the browser
-                        .requestMatchers("/login.html", "/map.html", "/driver.html", "/admin.html").permitAll()
+                        // Allow all frontend static files and resources
+                        .requestMatchers("/", "/login.html", "/map.html", "/driver.html", "/admin.html").permitAll()
+                        .requestMatchers("/*.js", "/*.css", "/images/**", "/favicon.ico").permitAll()
 
                         // Role-protected API endpoints
                         .requestMatchers("/admin/**").hasAuthority("ADMIN")

@@ -1,4 +1,4 @@
-package com.mov.transport.service;
+package com.mov.transport;
 
 import org.springframework.stereotype.Service;
 import java.util.Random;

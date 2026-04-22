@@ -8,49 +8,63 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <style>
-        #map { height: 500px; border-radius: 1.5rem; z-index: 1; }
+        #map { height: 500px; border-radius: 1.5rem; z-index: 10; }
         .student-dot { background: #3b82f6; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 12px rgba(59, 130, 246, 0.8); }
-        /* Hide the text instructions box from the map */
         .leaflet-routing-container { display: none; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans">
+<body class="text-slate-100 min-h-screen font-sans bg-transparent overflow-x-hidden">
 
-<nav class="bg-indigo-700 text-white p-4 shadow-xl flex justify-between items-center px-8 sticky top-0 z-50">
+<div id="background-root" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; background: #020617;"></div>
+
+<nav class="bg-slate-900/50 backdrop-blur-md border-b border-slate-800 text-white p-4 shadow-xl flex justify-between items-center px-8 sticky top-0 z-50">
     <div class="flex items-center gap-2">
         <span class="text-2xl">🚌</span>
-        <h1 class="text-xl font-bold tracking-tight">SmartTrack</h1>
+        <h1 class="text-xl font-bold tracking-tight text-white">SmartTrack <span class="text-indigo-400 font-medium text-sm ml-2">STUDENT CONSOLE</span></h1>
     </div>
-    <button onclick="logout()" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm transition">Logout</button>
+    <button onclick="logout()" class="bg-slate-800/80 hover:bg-rose-500/20 border border-slate-700 hover:border-rose-500/50 hover:text-rose-400 px-4 py-2 rounded-lg text-sm transition">Logout</button>
 </nav>
 
-<main class="max-w-6xl mx-auto p-4 lg:p-8 space-y-6">
+<main class="max-w-6xl mx-auto p-4 lg:p-8 space-y-6 relative z-10">
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-indigo-500">
-            <p class="text-[10px] font-bold text-slate-400 uppercase">Route</p>
-            <p id="display-route" class="text-lg font-black text-slate-800">---</p>
+        <div class="bg-slate-900/60 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-slate-800 border-b-4 border-b-indigo-500 transition hover:bg-slate-800/60">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Route Code</p>
+            <p id="display-route" class="text-xl font-black text-white mt-1">---</p>
         </div>
-        <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-emerald-500">
-            <p class="text-[10px] font-bold text-slate-400 uppercase">Arrival</p>
-            <p id="display-eta" class="text-lg font-black text-slate-800">Calculating...</p>
+        <div class="bg-slate-900/60 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-slate-800 border-b-4 border-b-emerald-500 transition hover:bg-slate-800/60">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Est. Arrival</p>
+            <p id="display-eta" class="text-xl font-black text-emerald-400 mt-1">Calculating...</p>
         </div>
-        <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-amber-500">
-            <p class="text-[10px] font-bold text-slate-400 uppercase">Driver</p>
-            <p id="display-driver" class="text-xs font-bold text-slate-600 truncate">Loading...</p>
+        <div class="bg-slate-900/60 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-slate-800 border-b-4 border-b-amber-500 transition hover:bg-slate-800/60">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Driver Account</p>
+            <p id="display-driver" class="text-sm font-bold text-slate-300 truncate mt-1">Loading...</p>
         </div>
-        <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-blue-500 text-center">
-            <p class="text-[10px] font-bold text-slate-400 uppercase">Passengers</p>
-            <p id="display-count" class="text-xl font-black text-blue-600">0</p>
+        <div class="bg-slate-900/60 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-slate-800 border-b-4 border-b-cyan-500 text-center transition hover:bg-slate-800/60">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Passengers</p>
+            <p id="display-count" class="text-3xl font-black text-cyan-400">0</p>
         </div>
     </div>
 
-    <div class="bg-white p-2 rounded-3xl shadow-2xl border border-slate-100 relative">
+    <div class="bg-slate-900/60 backdrop-blur-xl p-3 rounded-3xl shadow-2xl border border-slate-800 relative">
         <div id="map"></div>
     </div>
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+<script type="module">
+    import React from 'https://esm.sh/react@18';
+    import ReactDOM from 'https://esm.sh/react-dom@18/client';
+    import Beams from './BeamsBackground.js';
+
+    try {
+        const root = ReactDOM.createRoot(document.getElementById('background-root'));
+        root.render(React.createElement(Beams));
+    } catch (err) {
+        console.error('Failed to mount Beams background:', err);
+    }
+</script>
 
 <script>
     const token = localStorage.getItem("token");
@@ -60,60 +74,79 @@
     async function startApp() {
         if (!token) window.location.href = "/login.html";
 
-        const res = await fetch("/student/myRoute", { headers: { "Authorization": "Bearer "+token } });
-        const data = await res.json();
-        if(!data) return;
+        try {
+            const res = await fetch("/student/myRoute", { headers: { "Authorization": "Bearer "+token } });
+            if (!res.ok) throw new Error("Failed to fetch route");
+            const data = await res.json();
+            if(!data || !data.routeCode) return;
 
-        document.getElementById("display-route").innerText = data.routeCode;
+            document.getElementById("display-route").innerText = data.routeCode;
 
-        setInterval(() => updateLiveStats(data.routeCode), 5000);
-        updateLiveStats(data.routeCode);
+            setInterval(() => updateLiveStats(data.routeCode), 5000);
+            updateLiveStats(data.routeCode);
+        } catch (e) {
+            console.error("Error starting app:", e);
+        }
     }
 
     async function updateLiveStats(routeCode) {
         try {
-            const [loc, eta, details] = await Promise.all([
-                fetch(`/student/busLocation/${routeCode}`, { headers: { "Authorization": "Bearer "+token } }).then(r => r.json()),
-                fetch(`/student/eta/${routeCode}`, { headers: { "Authorization": "Bearer "+token } }).then(r => r.text()),
-                fetch(`/student/routeDetails/${routeCode}`, { headers: { "Authorization": "Bearer "+token } }).then(r => r.json())
+            const [locRes, etaRes, detailsRes] = await Promise.all([
+                fetch(`/student/busLocation/${routeCode}`, { headers: { "Authorization": "Bearer "+token } }),
+                fetch(`/student/eta/${routeCode}`, { headers: { "Authorization": "Bearer "+token } }),
+                fetch(`/student/routeDetails/${routeCode}`, { headers: { "Authorization": "Bearer "+token } })
             ]);
 
-            document.getElementById("display-eta").innerText = Math.round(eta) + " mins";
+            const loc = locRes.ok ? await locRes.json() : null;
+            const eta = etaRes.ok ? await etaRes.text() : null;
+            const details = detailsRes.ok ? await detailsRes.json() : {};
+
+            if (eta) document.getElementById("display-eta").innerText = Math.round(eta) + " mins";
             document.getElementById("display-driver").innerText = details.driverEmail || "Not Assigned";
-            document.getElementById("display-count").innerText = details.studentCount;
+            document.getElementById("display-count").innerText = details.studentCount || 0;
+
+            if (!loc || typeof loc.latitude === 'undefined') {
+                document.getElementById("display-eta").innerText = "Waiting for GPS...";
+                return; // Location not available yet
+            }
 
             const busPos = [loc.latitude, loc.longitude];
 
             if (!map) {
                 initMap(loc.latitude, loc.longitude);
             } else {
-                busMarker.setLatLng(busPos);
-                // Dynamically update road path
+                if (busMarker) busMarker.setLatLng(busPos);
                 drawRoadPath(busPos);
             }
-        } catch (e) { console.error("Sync error"); }
+        } catch (e) { console.error("Sync error:", e); }
     }
 
     function initMap(lat, lng) {
         map = L.map('map', { zoomControl: false }).setView([lat, lng], 15);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
+        }).addTo(map);
 
         navigator.geolocation.watchPosition(p => {
             const sPos = [p.coords.latitude, p.coords.longitude];
             if (!studentMarker) {
-                studentMarker = L.circleMarker(sPos, { radius: 7, fillColor: '#3b82f6', color: '#fff', weight: 3, fillOpacity: 1 }).addTo(map).bindPopup("You");
+                const iconHtml = `<div class="bg-indigo-500 w-4 h-4 rounded-full border-2 border-slate-900 shadow-[0_0_10px_#6366f1]"></div>`;
+                const icon = L.divIcon({ html: iconHtml, className: 'custom-div-icon', iconSize: [16, 16], iconAnchor: [8, 8] });
+                studentMarker = L.marker(sPos, { icon }).addTo(map).bindPopup("<b class='text-slate-800'>You</b>");
             } else {
                 studentMarker.setLatLng(sPos);
             }
         });
 
-        busMarker = L.marker([lat, lng]).addTo(map).bindPopup("Your Bus");
-        L.marker(schoolCoords, { icon: L.divIcon({ className: 'bg-red-500 w-4 h-4 rounded-full border-2 border-white' }) }).addTo(map).bindPopup("School");
+        const busIconHtml = `<div class="bg-emerald-500 w-5 h-5 rounded-full border-2 border-slate-900 shadow-[0_0_15px_#10b981] flex items-center justify-center text-[10px]">🚌</div>`;
+        const busIcon = L.divIcon({ html: busIconHtml, className: 'custom-div-icon', iconSize: [20, 20], iconAnchor: [10, 10] });
+        busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map).bindPopup("<b class='text-slate-800'>Your Bus</b>");
+        
+        L.marker(schoolCoords, { icon: L.divIcon({ className: 'bg-rose-500 w-4 h-4 rounded-full border-2 border-slate-900 shadow-[0_0_10px_#f43f5e]', iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(map).bindPopup("<b class='text-slate-800'>School</b>");
 
         drawRoadPath([lat, lng]);
     }
 
-    // New Function for Road-Aligned Routing
     function drawRoadPath(busPos) {
         if (routingControl) {
             map.removeControl(routingControl);
@@ -125,9 +158,9 @@
                 L.latLng(schoolCoords[0], schoolCoords[1])
             ],
             lineOptions: {
-                styles: [{ color: '#6366f1', weight: 6, opacity: 0.8 }]
+                styles: [{ color: '#10b981', weight: 5, opacity: 0.8 }]
             },
-            createMarker: function() { return null; }, // Hide default routing markers
+            createMarker: function() { return null; },
             addWaypoints: false,
             draggableWaypoints: false,
             fitSelectedRoutes: false,
