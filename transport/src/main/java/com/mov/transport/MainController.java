@@ -88,6 +88,15 @@ class RouteController {
     @Autowired
     private RouteRepository routeRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private StudentRouteRepository studentRouteRepository;
+
+    @Autowired
+    private DriverRouteRepository driverRouteRepository;
+
     @GetMapping("/allRoutes")
     public List<Route> getAllRoutes() {
         return routeRepository.findAll();
@@ -110,6 +119,57 @@ class RouteController {
     public List<BusLocation> getAllLocations() {
         return busLocationRepository.findAll();
     }
+
+    @PostMapping("/assignRoute")
+    public String assignRoute(@RequestBody Map<String, String> data) {
+        String email = data.get("email");
+        String routeCode = data.get("routeCode");
+
+        User user = userRepository.findByEmail(email);
+        if (user == null) return "User not found";
+
+        if (user.getRole().equalsIgnoreCase("STUDENT")) {
+            StudentRoute sr = studentRouteRepository.findByStudentEmail(email);
+            if (sr == null) sr = new StudentRoute();
+            sr.setStudentEmail(email);
+            sr.setRouteCode(routeCode);
+            studentRouteRepository.save(sr);
+            return "Route " + routeCode + " assigned to student " + email;
+        } else if (user.getRole().equalsIgnoreCase("DRIVER")) {
+            DriverRoute dr = driverRouteRepository.findByDriverEmail(email);
+            if (dr == null) dr = new DriverRoute();
+            dr.setDriverEmail(email);
+            dr.setRouteCode(routeCode);
+            driverRouteRepository.save(dr);
+            return "Route " + routeCode + " assigned to driver " + email;
+        }
+
+        return "Invalid role for assignment";
+    }
+
+    @PutMapping("/updateRoutePosition")
+    public String updateRoutePosition(@RequestBody Map<String, String> data) {
+        String routeCode = data.get("routeCode");
+        
+        try {
+            double sLat = Double.parseDouble(data.get("startLat"));
+            double sLng = Double.parseDouble(data.get("startLng"));
+            double eLat = Double.parseDouble(data.get("endLat"));
+            double eLng = Double.parseDouble(data.get("endLng"));
+
+            Route route = routeRepository.findByRouteCode(routeCode);
+            if (route == null) return "Route not found";
+
+            route.setStartLat(sLat);
+            route.setStartLng(sLng);
+            route.setEndLat(eLat);
+            route.setEndLng(eLng);
+            routeRepository.save(route);
+            return "Route coordinates updated successfully";
+        } catch (Exception e) {
+            return "Invalid coordinate format: " + e.getMessage();
+        }
+    }
 }
 
 @RestController
@@ -124,6 +184,9 @@ class StudentController {
 
     @Autowired
     private DriverTripRepository driverTripRepository;
+
+    @Autowired
+    private RouteRepository routeRepository;
 
     @PostMapping("/joinRoute")
     public String joinRoute(@RequestBody Map<String,String> data){
@@ -160,16 +223,19 @@ class StudentController {
     @GetMapping("/eta/{routeCode}")
     public double getETA(@PathVariable String routeCode){
         BusLocation bus = busLocationRepository.findByRouteCode(routeCode);
+        Route route = routeRepository.findByRouteCode(routeCode);
 
-        // Coordinates for the school destination
-        double schoolLat = 28.6139;
-        double schoolLng = 77.2090;
+        if (bus == null || route == null) return 0;
+
+        // Use the route's end coordinates as the destination
+        double destLat = route.getEndLat();
+        double destLng = route.getEndLng();
 
         // Euclidean distance formula
         double distance = Math.sqrt(
-                Math.pow(bus.getLatitude() - schoolLat, 2)
+                Math.pow(bus.getLatitude() - destLat, 2)
                         +
-                        Math.pow(bus.getLongitude() - schoolLng, 2)
+                        Math.pow(bus.getLongitude() - destLng, 2)
         );
 
         double speed = 0.01;
@@ -180,10 +246,15 @@ class StudentController {
     public Map<String, Object> getRouteDetails(@PathVariable String routeCode) {
         long count = studentRouteRepository.countByRouteCode(routeCode);
         DriverTrip trip = driverTripRepository.findFirstByRouteCodeAndActiveTrue(routeCode);
+        Route route = routeRepository.findByRouteCode(routeCode);
 
         return Map.of(
                 "studentCount", count,
-                "driverEmail", (trip != null) ? trip.getDriverEmail() : "No active driver"
+                "driverEmail", (trip != null) ? trip.getDriverEmail() : "No active driver",
+                "startLat", (route != null) ? route.getStartLat() : 0,
+                "startLng", (route != null) ? route.getStartLng() : 0,
+                "endLat", (route != null) ? route.getEndLat() : 0,
+                "endLng", (route != null) ? route.getEndLng() : 0
         );
     }
 }

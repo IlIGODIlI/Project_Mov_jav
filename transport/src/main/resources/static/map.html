@@ -68,8 +68,8 @@
 
 <script>
     const token = localStorage.getItem("token");
-    const schoolCoords = [28.6139, 77.2090];
-    let map, busMarker, studentMarker, routingControl;
+    let schoolCoords = [28.6139, 77.2090]; // Default fallback
+    let map, busMarker, studentMarker, schoolMarker, routingControl;
 
     async function startApp() {
         if (!token) window.location.href = "/login.html";
@@ -104,6 +104,14 @@
             if (eta) document.getElementById("display-eta").innerText = Math.round(eta) + " mins";
             document.getElementById("display-driver").innerText = details.driverEmail || "Not Assigned";
             document.getElementById("display-count").innerText = details.studentCount || 0;
+
+            // Update School Coordinates dynamically from backend
+            if (details.endLat && details.endLng) {
+                schoolCoords = [details.endLat, details.endLng];
+                if (schoolMarker) {
+                    schoolMarker.setLatLng(schoolCoords);
+                }
+            }
 
             if (!loc || typeof loc.latitude === 'undefined') {
                 document.getElementById("display-eta").innerText = "Waiting for GPS...";
@@ -142,7 +150,13 @@
         const busIcon = L.divIcon({ html: busIconHtml, className: 'custom-div-icon', iconSize: [20, 20], iconAnchor: [10, 10] });
         busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map).bindPopup("<b class='text-slate-800'>Your Bus</b>");
         
-        L.marker(schoolCoords, { icon: L.divIcon({ className: 'bg-rose-500 w-4 h-4 rounded-full border-2 border-slate-900 shadow-[0_0_10px_#f43f5e]', iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(map).bindPopup("<b class='text-slate-800'>School</b>");
+        schoolMarker = L.marker(schoolCoords, { 
+            icon: L.divIcon({ 
+                className: 'bg-rose-500 w-4 h-4 rounded-full border-2 border-slate-900 shadow-[0_0_10px_#f43f5e]', 
+                iconSize: [16, 16], 
+                iconAnchor: [8, 8] 
+            }) 
+        }).addTo(map).bindPopup("<b class='text-slate-800'>School/Destination</b>");
 
         drawRoadPath([lat, lng]);
     }

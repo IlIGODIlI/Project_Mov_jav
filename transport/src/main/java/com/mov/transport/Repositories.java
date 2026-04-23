@@ -24,3 +24,7 @@ interface StudentRouteRepository extends JpaRepository<StudentRoute, Long> {
     StudentRoute findByStudentEmail(String studentEmail);
     long countByRouteCode(String routeCode);
 }
+
+interface DriverRouteRepository extends JpaRepository<DriverRoute, Long> {
+    DriverRoute findByDriverEmail(String driverEmail);
+}

@@ -82,6 +82,30 @@
         </div>
     </div>
 
+    <div class="bg-slate-900/50 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-slate-800 hover:border-slate-700 transition mb-10">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="text-2xl">🔗</span>
+            <h3 class="text-xl font-bold text-white">Route Assignment</h3>
+        </div>
+        <div class="grid lg:grid-cols-3 gap-4">
+            <div>
+                <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">User Email</label>
+                <input id="assignEmail" type="email" placeholder="user@example.com"
+                       class="w-full p-4 bg-slate-800/50 border border-slate-700 text-white rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">Route Code</label>
+                <input id="assignRouteCode" type="text" placeholder="BUS-XXXX"
+                       class="w-full p-4 bg-slate-800/50 border border-slate-700 text-white rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition">
+            </div>
+            <div class="flex items-end">
+                <button onclick="assignRoute()" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-500/30 transition-all active:scale-95">
+                    Assign Route
+                </button>
+            </div>
+        </div>
+    </div>
+
     <section id="database-view" class="bg-slate-900/50 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-slate-800 mb-10">
         <div class="flex justify-between items-center mb-8">
             <div>
@@ -104,6 +128,9 @@
                         <tr>
                             <th class="px-6 py-4">Name</th>
                             <th class="px-6 py-4">Code</th>
+                            <th class="px-6 py-4">Start (Lat, Lng)</th>
+                            <th class="px-6 py-4">End (Lat, Lng)</th>
+                            <th class="px-6 py-4">Action</th>
                         </tr>
                         </thead>
                         <tbody id="route-table-body" class="divide-y divide-slate-800 text-sm text-slate-300 font-medium">
@@ -252,8 +279,17 @@
             const routes = await routeRes.json();
             document.getElementById("route-table-body").innerHTML = routes.map(r => `
                 <tr class="border-b border-slate-800 hover:bg-slate-800/50 transition">
-                    <td class="px-6 py-4 font-bold text-white">${r.name || 'Route '+r.routeCode}</td>
+                    <td class="px-6 py-4 font-bold text-white">${r.routeName || 'Route '+r.routeCode}</td>
                     <td class="px-6 py-4 font-mono text-indigo-400">${r.routeCode}</td>
+                    <td class="px-6 py-4 text-slate-400 text-[10px]">
+                        ${r.startLat ? `${r.startLat.toFixed(4)}, ${r.startLng.toFixed(4)}` : '-'}
+                    </td>
+                    <td class="px-6 py-4 text-slate-400 text-[10px]">
+                        ${r.endLat ? `${r.endLat.toFixed(4)}, ${r.endLng.toFixed(4)}` : '-'}
+                    </td>
+                    <td class="px-6 py-4">
+                        <button onclick="editRoutePositions('${r.routeCode}')" class="text-xs bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/40 transition">Edit</button>
+                    </td>
                 </tr>
             `).join('');
 
@@ -276,6 +312,62 @@
             console.error("Sync failed:", err);
         } finally {
             setTimeout(() => syncIcon.classList.remove("rotate-180"), 500);
+        }
+    }
+
+    async function assignRoute() {
+        const email = document.getElementById("assignEmail").value;
+        const routeCode = document.getElementById("assignRouteCode").value;
+
+        if (!email || !routeCode) return alert("Please enter both email and route code.");
+
+        try {
+            const res = await fetch("/admin/assignRoute", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ email, routeCode })
+            });
+            const msg = await res.text();
+            alert(msg);
+            refreshData();
+        } catch (err) {
+            alert("Assignment failed.");
+        }
+    }
+
+    async function editRoutePositions(routeCode) {
+        const sLat = prompt("Enter Start Latitude (e.g. 28.6139):");
+        if (sLat === null) return;
+        const sLng = prompt("Enter Start Longitude (e.g. 77.2090):");
+        if (sLng === null) return;
+        const eLat = prompt("Enter End Latitude:");
+        if (eLat === null) return;
+        const eLng = prompt("Enter End Longitude:");
+        if (eLng === null) return;
+
+        try {
+            const res = await fetch("/admin/updateRoutePosition", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ 
+                    routeCode, 
+                    startLat: sLat, 
+                    startLng: sLng, 
+                    endLat: eLat, 
+                    endLng: eLng 
+                })
+            });
+            const msg = await res.text();
+            alert(msg);
+            refreshData();
+        } catch (err) {
+            alert("Update failed.");
         }
     }
 

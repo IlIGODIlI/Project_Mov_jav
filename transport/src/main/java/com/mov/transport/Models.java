@@ -152,6 +152,12 @@ class Route {
 
     private String createdBy;
 
+    private double startLat;
+    private double startLng;
+
+    private double endLat;
+    private double endLng;
+
     public Route() {}
 
     public Long getId() {
@@ -181,6 +187,38 @@ class Route {
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
     }
+
+    public double getStartLat() {
+        return startLat;
+    }
+
+    public void setStartLat(double startLat) {
+        this.startLat = startLat;
+    }
+
+    public double getStartLng() {
+        return startLng;
+    }
+
+    public void setStartLng(double startLng) {
+        this.startLng = startLng;
+    }
+
+    public double getEndLat() {
+        return endLat;
+    }
+
+    public void setEndLat(double endLat) {
+        this.endLat = endLat;
+    }
+
+    public double getEndLng() {
+        return endLng;
+    }
+
+    public void setEndLng(double endLng) {
+        this.endLng = endLng;
+    }
 }
 
 @Entity
@@ -207,6 +245,41 @@ class StudentRoute {
 
     public void setStudentEmail(String studentEmail) {
         this.studentEmail = studentEmail;
+    }
+
+    public String getRouteCode() {
+        return routeCode;
+    }
+
+    public void setRouteCode(String routeCode) {
+        this.routeCode = routeCode;
+    }
+}
+
+@Entity
+@Table(name = "driver_routes")
+class DriverRoute {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String driverEmail;
+
+    private String routeCode;
+
+    public DriverRoute() {}
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getDriverEmail() {
+        return driverEmail;
+    }
+
+    public void setDriverEmail(String driverEmail) {
+        this.driverEmail = driverEmail;
     }
 
     public String getRouteCode() {
